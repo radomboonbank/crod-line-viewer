@@ -69,9 +69,12 @@ tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
 tbody tr:hover{background:var(--row-hover);}
 td{padding:9px 10px;white-space:nowrap;}
 .td-no{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px;}
-.td-name{color:var(--accent2);font-weight:500;}
+.td-name{font-weight:500;}
 .td-name-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
-.td-name-link:hover{color:#a5d6ff;}
+.td-name-v500{color:var(--purple);} .td-name-v500:hover{color:#d5b8ff;}
+.td-name-v230{color:var(--accent);} .td-name-v230:hover{color:#ffaa99;}
+.td-name-v115{color:var(--accent2);}.td-name-v115:hover{color:#a5d6ff;}
+.td-name-v69 {color:var(--green); } .td-name-v69:hover {color:#6edd85;}
 .td-dept{color:var(--muted);font-size:12px;}
 .td-mono{font-family:'IBM Plex Mono',monospace;font-size:12px;}
 .td-mva{color:var(--yellow);font-family:'IBM Plex Mono',monospace;font-size:12px;}
@@ -183,12 +186,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <option>500 kV</option><option>230 kV</option><option>115 kV</option><option>69 kV</option>
     </select>
     <select id="filter-bss"><option value="">บสส. ทั้งหมด</option></select>
-    <div class="stat-chips">
-      <div class="chip"><span class="dot" style="background:var(--purple)"></span><span id="cnt-500">0</span> × 500 kV</div>
-      <div class="chip"><span class="dot" style="background:var(--accent)"></span><span id="cnt-230">0</span> × 230 kV</div>
-      <div class="chip"><span class="dot" style="background:var(--accent2)"></span><span id="cnt-115">0</span> × 115 kV</div>
-      <div class="chip"><span class="dot" style="background:var(--green)"></span><span id="cnt-69">0</span> × 69 kV</div>
-    </div>
+    <select id="filter-wire"><option value="">ชนิดสาย ทั้งหมด</option></select>
   </div>
 
   <div class="table-wrap">
@@ -419,8 +417,10 @@ async function loadData() {
 function populateFilters() {
   const depts   = [...new Set(allData.map(r=>r["แผนกสายส่ง"]))].sort();
   const bssList = [...new Set(allData.map(r=>r["บสส"]))].sort();
+  const wires   = [...new Set(allData.map(r=>r["ชนิดสาย"]))].sort();
   depts.forEach(d => addOpt("filter-dept", d));
   bssList.forEach(b => addOpt("filter-bss", b));
+  wires.forEach(w => addOpt("filter-wire", w));
 }
 function addOpt(id, v) {
   const o = document.createElement("option");
@@ -439,7 +439,7 @@ document.querySelectorAll("thead th[data-col]").forEach(th => {
     render();
   });
 });
-["search","filter-dept","filter-volt","filter-bss"].forEach(id =>
+["search","filter-dept","filter-volt","filter-bss","filter-wire"].forEach(id =>
   document.getElementById(id).addEventListener("input", render)
 );
 
@@ -449,12 +449,14 @@ function render() {
   const dept = document.getElementById("filter-dept").value;
   const volt = document.getElementById("filter-volt").value;
   const bss  = document.getElementById("filter-bss").value;
+  const wire = document.getElementById("filter-wire").value;
   const isAdmin = currentRole === "admin";
 
   let rows = allData.filter(r => {
     if (dept && r["แผนกสายส่ง"]!==dept) return false;
     if (volt && r["แรงดัน"]!==volt) return false;
     if (bss  && r["บสส"]!==bss) return false;
+    if (wire && r["ชนิดสาย"]!==wire) return false;
     if (q) {
       const hay = [r["ชื่อสายส่ง"],r["สฟA"],r["สฟB"],r["ชนิดสาย"],r["บสส"]].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
@@ -468,10 +470,6 @@ function render() {
   });
 
   document.getElementById("total-badge").textContent = `${rows.length} records`;
-  document.getElementById("cnt-500").textContent = rows.filter(r=>r["แรงดัน"]==="500 kV").length;
-  document.getElementById("cnt-230").textContent = rows.filter(r=>r["แรงดัน"]==="230 kV").length;
-  document.getElementById("cnt-115").textContent = rows.filter(r=>r["แรงดัน"]==="115 kV").length;
-  document.getElementById("cnt-69").textContent  = rows.filter(r=>r["แรงดัน"]==="69 kV").length;
 
   const tbody = document.getElementById("tbody");
   const colCount = 7 + (isAdmin ? 1 : 0);
@@ -481,7 +479,7 @@ function render() {
   }
   tbody.innerHTML = rows.map(r => `
     <tr>
-      <td class="td-name td-name-link" onclick="openCalc('${r._id}')">${r["ชื่อสายส่ง"]}</td>
+      <td class="td-name td-name-link td-name-${vnc(r['แรงดัน'])}" onclick="openCalc('${r._id}')">${r["ชื่อสายส่ง"]}</td>
       <td class="td-mono" style="text-align:center">${r["วงจร"]}</td>
       <td><span class="volt-tag ${vc(r["แรงดัน"])}">${r["แรงดัน"]}</span></td>
       <td class="td-mono">${r["ชนิดสาย"]}</td>
@@ -500,6 +498,12 @@ function vc(v){
   if(v==="230 kV")return"v-230";
   if(v==="115 kV")return"v-115";
   return"v-69";
+}
+function vnc(v){
+  if(v==="500 kV")return"v500";
+  if(v==="230 kV")return"v230";
+  if(v==="115 kV")return"v115";
+  return"v69";
 }
 
 // ── CALC MODAL (MW / MV → MVA / %Rated) ───────────────────
@@ -626,10 +630,8 @@ window.delRow = async function(docId, name) {
 };
 
 // ── MODAL HELPERS ─────────────────────────────────────────
+// ยกเลิก = ปิดได้แต่ไม่บันทึก | backdrop = ไม่ปิด | บันทึก = บันทึก+ปิด
 document.getElementById("modal-cancel").addEventListener("click", closeModal);
-document.getElementById("modal").addEventListener("click", e => {
-  if (e.target === document.getElementById("modal")) closeModal();
-});
 function closeModal() {
   document.getElementById("modal").classList.remove("open");
   editDocId = null;
