@@ -42,6 +42,8 @@ header .sub{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monosp
 .btn-logout:hover{border-color:var(--accent);color:var(--accent);}
 .btn-add{background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .15s;}
 .btn-add:hover{opacity:.85;}
+.btn-tieline{background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s;margin-left:8px;}
+.btn-tieline:hover{opacity:.85;}
 
 /* ── CONTROLS ── */
 .controls{padding:16px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);}
@@ -170,6 +172,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
     <div id="total-badge" class="badge" style="margin-left:auto">— records</div>
     <span id="role-badge" class="role-badge"></span>
     <button class="btn-logout" id="btn-logout">ออกจากระบบ</button>
+    <button class="btn-tieline" id="btn-tieline" onclick="openTieLine()">🔗 Tie Line</button>
     <button class="btn-add" id="btn-add-row" style="display:none">＋ เพิ่มสายส่ง</button>
   </header>
 
@@ -319,6 +322,60 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
   </div>
 </div>
 
+<!-- ══ TIE LINE PAGE ════════════════════════════════════════ -->
+<div id="tieline-page" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:80;overflow-y:auto;">
+  <header style="background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;">
+    <div style="width:34px;height:34px;background:linear-gradient(135deg,var(--green),#2ea043);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🔗</div>
+    <div>
+      <div style="font-size:15px;font-weight:600;">CROD Tie Line Database</div>
+      <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">crod-line-response / tie_line_crod</div>
+    </div>
+    <div id="tl-badge" style="margin-left:auto;background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3);border-radius:20px;padding:4px 12px;font-size:12px;font-family:'IBM Plex Mono',monospace;">— records</div>
+    <button onclick="closeTieLine()" style="margin-left:8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 14px;font-size:12px;font-family:inherit;cursor:pointer;">← กลับ</button>
+  </header>
+
+  <!-- Controls -->
+  <div style="padding:14px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);">
+    <div style="position:relative;flex:1;min-width:200px;">
+      <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input type="text" id="tl-search" placeholder="ค้นหาชื่อสายส่ง, สฟ., ฝ่าย..." style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px 8px 34px;font-size:13px;font-family:inherit;outline:none;">
+    </div>
+    <select id="tl-filter-volt" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;min-width:140px;">
+      <option value="">แรงดัน ทั้งหมด</option>
+      <option>500 kV</option><option>230 kV</option><option>115 kV</option><option>69 kV</option>
+    </select>
+    <select id="tl-filter-dept" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;min-width:160px;">
+      <option value="">ฝ่ายที่เชื่อมโยง ทั้งหมด</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div style="overflow-x:auto;padding:0 28px 28px;">
+    <div id="tl-state" style="text-align:center;padding:56px 0;color:var(--muted);font-size:14px;">
+      <div style="width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;"></div>
+      กำลังโหลดข้อมูล Tie Line...
+    </div>
+    <table id="tl-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;display:none;">
+      <thead>
+        <tr>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">ชื่อสายส่ง</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">วงจร</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">แรงดัน</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ชนิดสาย</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">พิกัด MVA</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ระยะทาง (กม.)</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">อปก. (กม.)</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ช่วงเสาส่ง</th>
+          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ฝ่ายที่เชื่อมโยง</th>
+        </tr>
+      </thead>
+      <tbody id="tl-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ══ TOAST ════════════════════════════════════════════════ -->
 <div id="toast"></div>
 
@@ -343,6 +400,7 @@ const firebaseConfig = {
 
 const COLLECTION = "crodtransmissionline";
 const CONTACT_COLLECTION = "ContactTransmissionTerm";
+const TIE_LINE_COLLECTION = "tie_line_crod";
 
 // ── Static credentials (role-based) ──────────────────────
 const USERS = {
@@ -678,6 +736,75 @@ function clearForm() {
     .forEach(id => document.getElementById(id).value = "");
   document.getElementById("f-volt").value = "115 kV";
 }
+
+// ── TIE LINE PAGE ─────────────────────────────────────────
+let tieLineData = [], tieLineLoaded = false;
+
+window.openTieLine = async function() {
+  document.getElementById("tieline-page").style.display = "block";
+  if (tieLineLoaded) { renderTieLine(); return; }
+  try {
+    const snap = await getDocs(collection(db, TIE_LINE_COLLECTION));
+    tieLineData = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    tieLineLoaded = true;
+    // populate dept filter
+    const depts = [...new Set(tieLineData.map(r => r["ฝ่ายที่เชื่อมโยง"]))].sort();
+    depts.forEach(d => {
+      const o = document.createElement("option");
+      o.value = o.textContent = d;
+      document.getElementById("tl-filter-dept").appendChild(o);
+    });
+    renderTieLine();
+    document.getElementById("tl-state").style.display = "none";
+    document.getElementById("tl-table").style.display = "table";
+  } catch(e) {
+    document.getElementById("tl-state").innerHTML =
+      `<div style="color:var(--accent)">❌ โหลดข้อมูล Tie Line ไม่ได้<br><small style="color:var(--muted)">${e.message}</small></div>`;
+  }
+};
+
+window.closeTieLine = function() {
+  document.getElementById("tieline-page").style.display = "none";
+};
+
+function renderTieLine() {
+  const q    = document.getElementById("tl-search").value.toLowerCase();
+  const volt = document.getElementById("tl-filter-volt").value;
+  const dept = document.getElementById("tl-filter-dept").value;
+
+  let rows = tieLineData.filter(r => {
+    if (volt && r["แรงดัน"] !== volt) return false;
+    if (dept && r["ฝ่ายที่เชื่อมโยง"] !== dept) return false;
+    if (q) {
+      const hay = [r["ชื่อสายส่ง"], r["สฟA"], r["สฟB"], r["ฝ่ายที่เชื่อมโยง"], r["ช่วงเสาส่ง"]].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById("tl-badge").textContent = `${rows.length} records`;
+  const tbody = document.getElementById("tl-tbody");
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">ไม่พบข้อมูลที่ตรงกัน</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 10px;color:${vnc(r['แรงดัน'])=='v500'?'var(--purple)':vnc(r['แรงดัน'])=='v230'?'var(--accent)':vnc(r['แรงดัน'])=='v115'?'var(--accent2)':'var(--green)'};font-weight:500;">${r["ชื่อสายส่ง"]}</td>
+      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:center;">${r["วงจร"]}</td>
+      <td style="padding:9px 10px;"><span class="volt-tag ${vc(r['แรงดัน'])}">${r["แรงดัน"]}</span></td>
+      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["ชนิดสาย"]}</td>
+      <td style="padding:9px 10px;color:var(--yellow);font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["พิกัดMVA"]!=null?r["พิกัดMVA"].toFixed(2):"—"}</td>
+      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["ระยะทางกม"]!=null?r["ระยะทางกม"].toFixed(3):"—"}</td>
+      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["อปกรับผิดชอบกม"]!=null?r["อปกรับผิดชอบกม"].toFixed(3):"—"}</td>
+      <td style="padding:9px 10px;font-size:12px;">${r["ช่วงเสาส่ง"]??""}</td>
+      <td style="padding:9px 10px;font-size:12px;color:var(--muted);">${r["ฝ่ายที่เชื่อมโยง"]??""}</td>
+    </tr>`).join("");
+}
+
+["tl-search","tl-filter-volt","tl-filter-dept"].forEach(id =>
+  document.getElementById(id)?.addEventListener("input", renderTieLine)
+);
 
 // ── TOAST ─────────────────────────────────────────────────
 function toast(msg, err=false) {
