@@ -532,10 +532,14 @@ window.openCalc = function(docId) {
   document.getElementById("ci-dist").textContent    = r["ระยะทางกม"] != null ? `${r["ระยะทางกม"].toFixed(3)} กม.` : "—";
 
   // ── ผู้รับผิดชอบ: match บสส กับ ปฏิบัติหน้าที่ ──────────
-  const bssVal = (r["บสส"] ?? "").trim();
-  const contacts = contactData.filter(c =>
-    (c["ปฏิบัติหน้าที่"] ?? "").trim() === bssVal
-  );
+  // บสส ใน crodtransmissionline อาจเป็น "อ่างทอง1"
+  // ปฏิบัติหน้าที่ ใน ContactTransmissionTerm อาจเป็น "บสส. อ่างทอง1"
+  // ใช้ includes() เพื่อ match แบบ fuzzy
+  const bssVal = (r["บสส"] ?? "").trim().toLowerCase();
+  const contacts = contactData.filter(c => {
+    const duty = (c["ปฏิบัติหน้าที่"] ?? "").trim().toLowerCase();
+    return duty.includes(bssVal) || bssVal.includes(duty);
+  });
   const wrap = document.getElementById("ci-contact-wrap");
   const list = document.getElementById("ci-contact-list");
   if (contacts.length > 0) {
