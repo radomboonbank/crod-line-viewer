@@ -288,6 +288,11 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <div><span style="color:var(--muted)">พิกัด MVA</span><br><span id="ci-mva" style="color:var(--yellow);font-family:'IBM Plex Mono',monospace;font-weight:500">—</span></div>
       <div style="grid-column:span 2"><span style="color:var(--muted)">ระยะทาง</span><br><span id="ci-dist" style="color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:500">—</span></div>
     </div>
+    <!-- Contact section -->
+    <div id="ci-contact-wrap" style="background:var(--bg);border:1px solid rgba(121,192,255,.25);border-radius:8px;padding:12px 16px;margin:0 0 18px;display:none;">
+      <div style="font-size:11px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">📞 ผู้รับผิดชอบ</div>
+      <div id="ci-contact-list" style="display:flex;flex-direction:column;gap:8px;font-size:13px;"></div>
+    </div>
     <div class="calc-grid">
       <div class="calc-field">
         <label>MW</label>
@@ -337,6 +342,7 @@ const firebaseConfig = {
 // ▲▲▲ วาง firebaseConfig ของคุณที่นี่ ▲▲▲
 
 const COLLECTION = "crodtransmissionline";
+const CONTACT_COLLECTION = "ContactTransmissionTerm";
 
 // ── Static credentials (role-based) ──────────────────────
 const USERS = {
@@ -345,7 +351,7 @@ const USERS = {
 };
 
 // ── State ─────────────────────────────────────────────────
-let db, allData = [], sortCol = "ลำดับ", sortDir = 1;
+let db, allData = [], contactData = [], sortCol = "ลำดับ", sortDir = 1;
 let currentRole = null, editDocId = null;
 
 // ── Init Firebase ─────────────────────────────────────────
@@ -402,8 +408,12 @@ document.getElementById("btn-logout").addEventListener("click", () => {
 // ── LOAD DATA ─────────────────────────────────────────────
 async function loadData() {
   try {
-    const snap = await getDocs(collection(db, COLLECTION));
-    allData = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    const [snapLine, snapContact] = await Promise.all([
+      getDocs(collection(db, COLLECTION)),
+      getDocs(collection(db, CONTACT_COLLECTION)),
+    ]);
+    allData     = snapLine.docs.map(d => ({ _id: d.id, ...d.data() }));
+    contactData = snapContact.docs.map(d => d.data());
     populateFilters();
     render();
     document.getElementById("state").style.display = "none";
@@ -520,6 +530,29 @@ window.openCalc = function(docId) {
   document.getElementById("ci-circuit").textContent = r["วงจร"] != null ? `วงจรที่ ${r["วงจร"]}` : "—";
   document.getElementById("ci-mva").textContent     = calcRatedMVA != null ? `${calcRatedMVA.toFixed(2)} MVA` : "—";
   document.getElementById("ci-dist").textContent    = r["ระยะทางกม"] != null ? `${r["ระยะทางกม"].toFixed(3)} กม.` : "—";
+
+  // ── ผู้รับผิดชอบ: match บสส กับ ปฏิบัติหน้าที่ ──────────
+  const bssVal = (r["บสส"] ?? "").trim();
+  const contacts = contactData.filter(c =>
+    (c["ปฏิบัติหน้าที่"] ?? "").trim() === bssVal
+  );
+  const wrap = document.getElementById("ci-contact-wrap");
+  const list = document.getElementById("ci-contact-list");
+  if (contacts.length > 0) {
+    list.innerHTML = contacts.map(c => `
+      <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:6px;padding:8px 12px;">
+        <div style="flex:1">
+          <span style="font-weight:600;color:var(--text)">${c["ชื่อ"]} ${c["นามสกุล"]}</span>
+          <span style="margin-left:8px;font-size:11px;color:var(--muted)">${c["ปฏิบัติหน้าที่"]}</span>
+        </div>
+        <a href="tel:${c["เบอร์มือถือ"]}" style="color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:13px;text-decoration:none;">
+          📱 ${c["เบอร์มือถือ"]}
+        </a>
+      </div>`).join("");
+    wrap.style.display = "block";
+  } else {
+    wrap.style.display = "none";
+  }
 
   document.getElementById("c-mw").value = "";
   document.getElementById("c-mv").value = "";
