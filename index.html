@@ -369,10 +369,94 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">อปก. (กม.)</th>
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ช่วงเสาส่ง</th>
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ฝ่ายที่เชื่อมโยง</th>
+          <th id="tl-th-action" style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);display:none;">จัดการ</th>
         </tr>
       </thead>
       <tbody id="tl-tbody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- ══ TL CALC MODAL ════════════════════════════════════════ -->
+<div class="modal-overlay" id="tl-calc-modal">
+  <div class="modal">
+    <h3 id="tl-calc-title" style="justify-content:space-between">
+      <span>📐 คำนวณโหลดสายส่ง Tie Line</span>
+      <button id="tl-calc-close-x" style="background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:0 2px;">✕</button>
+    </h3>
+    <div id="tl-calc-info" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin:-10px 0 18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 16px;font-size:12px;">
+      <div><span style="color:var(--muted)">บสส.</span><br><span id="tl-ci-bss" style="color:var(--text);font-weight:500">—</span></div>
+      <div><span style="color:var(--muted)">ฝ่ายที่เชื่อมโยง</span><br><span id="tl-ci-dept" style="color:var(--text);font-weight:500">—</span></div>
+      <div><span style="color:var(--muted)">วงจร</span><br><span id="tl-ci-circuit" style="color:var(--text);font-weight:500">—</span></div>
+      <div><span style="color:var(--muted)">พิกัด MVA</span><br><span id="tl-ci-mva" style="color:var(--yellow);font-family:'IBM Plex Mono',monospace;font-weight:500">—</span></div>
+      <div><span style="color:var(--muted)">ระยะทาง</span><br><span id="tl-ci-dist" style="color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:500">—</span></div>
+      <div><span style="color:var(--muted)">อปก. (กม.)</span><br><span id="tl-ci-org" style="color:var(--accent2);font-family:'IBM Plex Mono',monospace;font-weight:500">—</span></div>
+    </div>
+    <!-- contact section -->
+    <div id="tl-ci-contact-wrap" style="background:var(--bg);border:1px solid rgba(121,192,255,.25);border-radius:8px;padding:12px 16px;margin:0 0 18px;display:none;">
+      <div style="font-size:11px;color:var(--accent2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">📞 ผู้รับผิดชอบ</div>
+      <div id="tl-ci-contact-list" style="display:flex;flex-direction:column;gap:8px;font-size:13px;"></div>
+    </div>
+    <div class="calc-grid">
+      <div class="calc-field">
+        <label>MW</label>
+        <input type="number" step="any" id="tl-c-mw" placeholder="0">
+      </div>
+      <div class="calc-field">
+        <label>MV <span class="unit">(Mvar)</span></label>
+        <input type="number" step="any" id="tl-c-mv" placeholder="0">
+      </div>
+      <div class="calc-field result" id="tl-c-mva-box">
+        <label>MVA</label>
+        <input type="text" id="tl-c-mva" readonly>
+        <div class="calc-formula">√(MW² + MV²)</div>
+      </div>
+      <div class="calc-field result" id="tl-c-pct-box">
+        <label>% Rated</label>
+        <input type="text" id="tl-c-pct" readonly>
+        <div class="calc-formula">(MVA ÷ พิกัด MVA) × 100</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="tl-calc-close">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TL EDIT MODAL ════════════════════════════════════════ -->
+<div class="modal-overlay" id="tl-modal">
+  <div class="modal">
+    <h3 id="tl-modal-title">✏️ แก้ไขข้อมูล Tie Line</h3>
+    <div class="modal-grid">
+      <div class="full">
+        <label>ชื่อสายส่ง</label>
+        <input type="text" id="tl-f-name">
+      </div>
+      <div><label>แผนกสายส่ง</label><input type="text" id="tl-f-dept"></div>
+      <div><label>บสส.</label><input type="text" id="tl-f-bss"></div>
+      <div><label>วงจร</label><input type="number" id="tl-f-circuit" min="1"></div>
+      <div><label>แรงดัน</label>
+        <select id="tl-f-volt"><option>500 kV</option><option>230 kV</option><option>115 kV</option><option>69 kV</option></select>
+      </div>
+      <div class="full"><label>ชนิดสาย</label><input type="text" id="tl-f-type"></div>
+      <div><label>พิกัด MVA</label><input type="number" step="0.01" id="tl-f-mva"></div>
+      <div><label>ระยะทาง (กม.)</label><input type="number" step="0.001" id="tl-f-dist"></div>
+      <div><label>อปก. รับผิดชอบ (กม.)</label><input type="number" step="0.001" id="tl-f-org"></div>
+      <div><label>เสาส่ง (ต้น)</label><input type="number" id="tl-f-pole"></div>
+      <div><label>ลำดับ</label><input type="number" id="tl-f-no"></div>
+      <div><label>สฟ. A</label><input type="text" id="tl-f-sfa"></div>
+      <div><label>สฟ. B</label><input type="text" id="tl-f-sfb"></div>
+      <div class="full">
+        <label>ช่วงเสาส่ง</label><input type="text" id="tl-f-span" placeholder="เช่น 50/1 - 121/2A">
+      </div>
+      <div class="full">
+        <label>ฝ่ายที่เชื่อมโยง</label><input type="text" id="tl-f-zone">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="tl-modal-cancel">ยกเลิก</button>
+      <button class="btn-save" id="tl-modal-save">💾 บันทึก</button>
+    </div>
   </div>
 </div>
 
@@ -742,6 +826,7 @@ let tieLineData = [], tieLineLoaded = false;
 
 window.openTieLine = async function() {
   document.getElementById("tieline-page").style.display = "block";
+  if (currentRole === "admin") document.getElementById("tl-th-action").style.display = "";
   if (tieLineLoaded) { renderTieLine(); return; }
   try {
     const snap = await getDocs(collection(db, TIE_LINE_COLLECTION));
@@ -783,14 +868,16 @@ function renderTieLine() {
   });
 
   document.getElementById("tl-badge").textContent = `${rows.length} records`;
+  const isAdmin = currentRole === "admin";
   const tbody = document.getElementById("tl-tbody");
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">ไม่พบข้อมูลที่ตรงกัน</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">ไม่พบข้อมูลที่ตรงกัน</td></tr>`;
     return;
   }
+  const nameColor = r => vnc(r['แรงดัน'])==='v500'?'var(--purple)':vnc(r['แรงดัน'])==='v230'?'var(--accent)':vnc(r['แรงดัน'])==='v115'?'var(--accent2)':'var(--green)';
   tbody.innerHTML = rows.map(r => `
     <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:9px 10px;color:${vnc(r['แรงดัน'])=='v500'?'var(--purple)':vnc(r['แรงดัน'])=='v230'?'var(--accent)':vnc(r['แรงดัน'])=='v115'?'var(--accent2)':'var(--green)'};font-weight:500;">${r["ชื่อสายส่ง"]}</td>
+      <td style="padding:9px 10px;color:${nameColor(r)};font-weight:500;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;" onclick="openTlCalc('${r._id}')">${r["ชื่อสายส่ง"]}</td>
       <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:center;">${r["วงจร"]}</td>
       <td style="padding:9px 10px;"><span class="volt-tag ${vc(r['แรงดัน'])}">${r["แรงดัน"]}</span></td>
       <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["ชนิดสาย"]}</td>
@@ -799,12 +886,161 @@ function renderTieLine() {
       <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["อปกรับผิดชอบกม"]!=null?r["อปกรับผิดชอบกม"].toFixed(3):"—"}</td>
       <td style="padding:9px 10px;font-size:12px;">${r["ช่วงเสาส่ง"]??""}</td>
       <td style="padding:9px 10px;font-size:12px;color:var(--muted);">${r["ฝ่ายที่เชื่อมโยง"]??""}</td>
+      ${isAdmin ? `<td style="padding:9px 10px;">
+        <button class="btn-edit" onclick="event.stopPropagation();openTlEdit('${r._id}')">✏️ แก้ไข</button>
+        <button class="btn-del"  onclick="event.stopPropagation();delTlRow('${r._id}','${r["ชื่อสายส่ง"]}')">🗑</button>
+      </td>` : ""}
     </tr>`).join("");
 }
 
 ["tl-search","tl-filter-volt","tl-filter-dept"].forEach(id =>
   document.getElementById(id)?.addEventListener("input", renderTieLine)
 );
+
+// ── TL CALC MODAL ─────────────────────────────────────────
+let tlCalcRatedMVA = null;
+
+window.openTlCalc = function(docId) {
+  const r = tieLineData.find(x => x._id === docId);
+  if (!r) return;
+  tlCalcRatedMVA = r["พิกัดMVA"] ?? null;
+
+  document.getElementById("tl-calc-title").children[0].textContent = `📐 ${r["ชื่อสายส่ง"]}`;
+  document.getElementById("tl-ci-bss").textContent      = r["บสส"]               ?? "—";
+  document.getElementById("tl-ci-dept").textContent     = r["ฝ่ายที่เชื่อมโยง"]  ?? "—";
+  document.getElementById("tl-ci-circuit").textContent  = r["วงจร"] != null ? `วงจรที่ ${r["วงจร"]}` : "—";
+  document.getElementById("tl-ci-mva").textContent      = tlCalcRatedMVA != null ? `${tlCalcRatedMVA.toFixed(2)} MVA` : "—";
+  document.getElementById("tl-ci-dist").textContent     = r["ระยะทางกม"] != null ? `${r["ระยะทางกม"].toFixed(3)} กม.` : "—";
+  document.getElementById("tl-ci-org").textContent      = r["อปกรับผิดชอบกม"] != null ? `${r["อปกรับผิดชอบกม"].toFixed(3)} กม.` : "—";
+
+  // contact lookup
+  const bssVal = (r["บสส"] ?? "").trim().toLowerCase();
+  const contacts = contactData.filter(c => {
+    const duty = (c["ปฏิบัติหน้าที่"] ?? "").trim().toLowerCase();
+    return duty.includes(bssVal) || bssVal.includes(duty);
+  });
+  const cWrap = document.getElementById("tl-ci-contact-wrap");
+  const cList = document.getElementById("tl-ci-contact-list");
+  if (contacts.length > 0) {
+    cList.innerHTML = contacts.map(c => `
+      <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:6px;padding:8px 12px;">
+        <div style="flex:1"><span style="font-weight:600;color:var(--text)">${c["ชื่อ"]} ${c["นามสกุล"]}</span>
+          <span style="margin-left:8px;font-size:11px;color:var(--muted)">${c["ปฏิบัติหน้าที่"]}</span></div>
+        <a href="tel:${c["เบอร์มือถือ"]}" style="color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:13px;text-decoration:none;">📱 ${c["เบอร์มือถือ"]}</a>
+      </div>`).join("");
+    cWrap.style.display = "block";
+  } else {
+    cWrap.style.display = "none";
+  }
+
+  document.getElementById("tl-c-mw").value = "";
+  document.getElementById("tl-c-mv").value = "";
+  document.getElementById("tl-c-mva").value = "";
+  document.getElementById("tl-c-pct").value = "";
+  document.getElementById("tl-c-pct-box").classList.remove("warn");
+  document.getElementById("tl-calc-modal").classList.add("open");
+};
+
+function tlCalcCompute() {
+  const mw = parseFloat(document.getElementById("tl-c-mw").value) || 0;
+  const mv = parseFloat(document.getElementById("tl-c-mv").value) || 0;
+  const mva = Math.sqrt(mw*mw + mv*mv);
+  document.getElementById("tl-c-mva").value = mva.toFixed(2);
+  const pctBox = document.getElementById("tl-c-pct-box");
+  if (tlCalcRatedMVA && tlCalcRatedMVA > 0) {
+    const pct = (mva / tlCalcRatedMVA) * 100;
+    document.getElementById("tl-c-pct").value = pct.toFixed(2) + " %";
+    pctBox.classList.toggle("warn", pct >= 100);
+  } else {
+    document.getElementById("tl-c-pct").value = "—";
+    pctBox.classList.remove("warn");
+  }
+}
+document.getElementById("tl-c-mw").addEventListener("input", tlCalcCompute);
+document.getElementById("tl-c-mv").addEventListener("input", tlCalcCompute);
+function closeTlCalc() { document.getElementById("tl-calc-modal").classList.remove("open"); }
+document.getElementById("tl-calc-close").addEventListener("click", closeTlCalc);
+document.getElementById("tl-calc-close-x").addEventListener("click", closeTlCalc);
+
+// ── TL EDIT ───────────────────────────────────────────────
+let tlEditDocId = null;
+
+window.openTlEdit = function(docId) {
+  const r = tieLineData.find(x => x._id === docId);
+  if (!r) return;
+  tlEditDocId = docId;
+  document.getElementById("tl-modal-title").textContent = "✏️ แก้ไขข้อมูล Tie Line";
+  document.getElementById("tl-f-no").value      = r["ลำดับ"]            ?? "";
+  document.getElementById("tl-f-name").value    = r["ชื่อสายส่ง"]       ?? "";
+  document.getElementById("tl-f-dept").value    = r["แผนกสายส่ง"]       ?? "";
+  document.getElementById("tl-f-bss").value     = r["บสส"]               ?? "";
+  document.getElementById("tl-f-circuit").value = r["วงจร"]              ?? "";
+  document.getElementById("tl-f-volt").value    = r["แรงดัน"]            ?? "115 kV";
+  document.getElementById("tl-f-type").value    = r["ชนิดสาย"]           ?? "";
+  document.getElementById("tl-f-mva").value     = r["พิกัดMVA"]          ?? "";
+  document.getElementById("tl-f-dist").value    = r["ระยะทางกม"]         ?? "";
+  document.getElementById("tl-f-org").value     = r["อปกรับผิดชอบกม"]   ?? "";
+  document.getElementById("tl-f-pole").value    = r["เสาส่งต้น"]         ?? "";
+  document.getElementById("tl-f-sfa").value     = r["สฟA"]               ?? "";
+  document.getElementById("tl-f-sfb").value     = r["สฟB"]               ?? "";
+  document.getElementById("tl-f-span").value    = r["ช่วงเสาส่ง"]        ?? "";
+  document.getElementById("tl-f-zone").value    = r["ฝ่ายที่เชื่อมโยง"]  ?? "";
+  document.getElementById("tl-modal").classList.add("open");
+};
+
+document.getElementById("tl-modal-cancel").addEventListener("click", () => {
+  document.getElementById("tl-modal").classList.remove("open");
+  tlEditDocId = null;
+});
+
+document.getElementById("tl-modal-save").addEventListener("click", async () => {
+  const no = parseInt(document.getElementById("tl-f-no").value);
+  if (!no) { toast("กรุณากรอกลำดับ", true); return; }
+  const data = {
+    ลำดับ:            no,
+    ชื่อสายส่ง:       document.getElementById("tl-f-name").value.trim(),
+    แผนกสายส่ง:       document.getElementById("tl-f-dept").value.trim(),
+    บสส:              document.getElementById("tl-f-bss").value.trim(),
+    วงจร:             parseInt(document.getElementById("tl-f-circuit").value)||1,
+    แรงดัน:           document.getElementById("tl-f-volt").value,
+    ชนิดสาย:          document.getElementById("tl-f-type").value.trim(),
+    พิกัดMVA:         parseFloat(document.getElementById("tl-f-mva").value)||null,
+    ระยะทางกม:        parseFloat(document.getElementById("tl-f-dist").value)||null,
+    อปกรับผิดชอบกม:   parseFloat(document.getElementById("tl-f-org").value)||null,
+    เสาส่งต้น:        parseFloat(document.getElementById("tl-f-pole").value)||null,
+    สฟA:              document.getElementById("tl-f-sfa").value.trim(),
+    สฟB:              document.getElementById("tl-f-sfb").value.trim(),
+    ช่วงเสาส่ง:       document.getElementById("tl-f-span").value.trim(),
+    ฝ่ายที่เชื่อมโยง: document.getElementById("tl-f-zone").value.trim(),
+    isTieLine:        true,
+  };
+  try {
+    const docId = tlEditDocId ?? String(no);
+    await setDoc(doc(db, TIE_LINE_COLLECTION, docId), data);
+    const idx = tieLineData.findIndex(x => x._id === docId);
+    if (idx >= 0) tieLineData[idx] = { _id: docId, ...data };
+    else tieLineData.push({ _id: docId, ...data });
+    document.getElementById("tl-modal").classList.remove("open");
+    tlEditDocId = null;
+    renderTieLine();
+    toast(tlEditDocId ? "แก้ไขสำเร็จ ✓" : "เพิ่มข้อมูลสำเร็จ ✓");
+  } catch(e) {
+    toast("บันทึกไม่ได้: " + e.message, true);
+  }
+});
+
+// ── TL DELETE ─────────────────────────────────────────────
+window.delTlRow = async function(docId, name) {
+  if (!confirm(`ลบ "${name}" ใช่หรือไม่?`)) return;
+  try {
+    await deleteDoc(doc(db, TIE_LINE_COLLECTION, docId));
+    tieLineData = tieLineData.filter(x => x._id !== docId);
+    renderTieLine();
+    toast("ลบข้อมูลสำเร็จ ✓");
+  } catch(e) {
+    toast("ลบไม่ได้: " + e.message, true);
+  }
+};
 
 // ── TOAST ─────────────────────────────────────────────────
 function toast(msg, err=false) {
