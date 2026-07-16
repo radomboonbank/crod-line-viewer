@@ -42,8 +42,10 @@ header .sub{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monosp
 .btn-logout:hover{border-color:var(--accent);color:var(--accent);}
 .btn-add{background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px;transition:opacity .15s;}
 .btn-add:hover{opacity:.85;}
-.btn-tieline{background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s;margin-left:8px;}
+.btn-tieline{background:rgba(121,192,255,.2);color:var(--accent2);border:1px solid rgba(121,192,255,.4);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s;margin-left:8px;}
 .btn-tieline:hover{opacity:.85;}
+.add-opt{cursor:pointer;transition:background .15s;}
+.add-opt:hover{background:var(--row-hover);}
 
 /* ── CONTROLS ── */
 .controls{padding:16px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);}
@@ -173,7 +175,13 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
     <span id="role-badge" class="role-badge"></span>
     <button class="btn-logout" id="btn-logout">ออกจากระบบ</button>
     <button class="btn-tieline" id="btn-tieline" onclick="openTieLine()">🔗 Tie Line</button>
-    <button class="btn-add" id="btn-add-row" style="display:none">＋ เพิ่มสายส่ง</button>
+    <div id="btn-add-wrap" style="display:none;position:relative;">
+      <button class="btn-add" id="btn-add-toggle" style="margin-left:8px;">＋ เพิ่มสายส่ง ▾</button>
+      <div id="add-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:180px;overflow:hidden;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4);">
+        <div class="add-opt" id="add-normal"  style="padding:11px 16px;cursor:pointer;font-size:13px;">🗼 เพิ่มสายส่ง อปก.</div>
+        <div class="add-opt" id="add-tieline" style="padding:11px 16px;cursor:pointer;font-size:13px;border-top:1px solid var(--border);">🔗 เพิ่ม Tie Line อปก.</div>
+      </div>
+    </div>
   </header>
 
   <div class="controls">
@@ -536,7 +544,7 @@ function showApp(username, role) {
   rb.textContent = role === "admin" ? `👑 ${username} (Admin)` : `👤 ${username}`;
   rb.className = "role-badge " + (role === "admin" ? "role-admin" : "role-user");
   if (role === "admin") {
-    document.getElementById("btn-add-row").style.display = "flex";
+    document.getElementById("btn-add-wrap").style.display = "block";
     document.getElementById("th-action").style.display = "";
   }
 }
@@ -731,32 +739,67 @@ document.getElementById("calc-close").addEventListener("click", closeCalc);
 document.getElementById("calc-close-x").addEventListener("click", closeCalc);
 
 
-// ── ADD NEW ────────────────────────────────────────────────
-document.getElementById("btn-add-row").addEventListener("click", () => {
+// ── ADD DROPDOWN ──────────────────────────────────────────
+let isTieLine = false;
+
+document.getElementById("btn-add-toggle").addEventListener("click", e => {
+  e.stopPropagation();
+  const dd = document.getElementById("add-dropdown");
+  dd.style.display = dd.style.display === "none" ? "block" : "none";
+});
+document.addEventListener("click", () => {
+  document.getElementById("add-dropdown").style.display = "none";
+});
+
+document.getElementById("add-normal").addEventListener("click", () => {
+  document.getElementById("add-dropdown").style.display = "none";
+  isTieLine = false;
   editDocId = null;
-  document.getElementById("modal-title").textContent = "➕ เพิ่มสายส่งใหม่";
+  document.getElementById("modal-title").textContent = "➕ เพิ่ม สายส่ง อปก.";
+  setTieLineFields(false);
   clearForm();
   document.getElementById("modal").classList.add("open");
 });
+
+document.getElementById("add-tieline").addEventListener("click", () => {
+  document.getElementById("add-dropdown").style.display = "none";
+  isTieLine = true;
+  editDocId = null;
+  document.getElementById("modal-title").textContent = "🔗 เพิ่ม Tie Line อปก.";
+  setTieLineFields(true);
+  clearForm();
+  document.getElementById("modal").classList.add("open");
+});
+
+function setTieLineFields(show) {
+  document.querySelectorAll(".tieline-field").forEach(el => {
+    el.style.display = show ? "" : "none";
+  });
+}
 
 // ── OPEN EDIT ─────────────────────────────────────────────
 window.openEdit = function(docId) {
   const r = allData.find(x => x._id === docId);
   if (!r) return;
   editDocId = docId;
-  document.getElementById("modal-title").textContent = "✏️ แก้ไขข้อมูลสายส่ง";
-  document.getElementById("f-no").value      = r["ลำดับ"]       ?? "";
-  document.getElementById("f-name").value    = r["ชื่อสายส่ง"]  ?? "";
-  document.getElementById("f-dept").value    = r["แผนกสายส่ง"]  ?? "";
-  document.getElementById("f-bss").value     = r["บสส"]          ?? "";
-  document.getElementById("f-circuit").value = r["วงจร"]         ?? "";
-  document.getElementById("f-volt").value    = r["แรงดัน"]       ?? "115 kV";
-  document.getElementById("f-type").value    = r["ชนิดสาย"]      ?? "";
-  document.getElementById("f-mva").value     = r["พิกัดMVA"]     ?? "";
-  document.getElementById("f-dist").value    = r["ระยะทางกม"]    ?? "";
-  document.getElementById("f-pole").value    = r["เสาส่งต้น"]    ?? "";
-  document.getElementById("f-sfa").value     = r["สฟA"]          ?? "";
-  document.getElementById("f-sfb").value     = r["สฟB"]          ?? "";
+  isTieLine = !!(r["อปกรับผิดชอบกม"] || r["ช่วงเสาส่ง"] || r["ฝ่ายที่เชื่อมโยง"] || r["isTieLine"]);
+  document.getElementById("modal-title").textContent = isTieLine ? "🔗 แก้ไข สายส่ง Tie Line" : "✏️ แก้ไข สายส่ง อปก.";
+  setTieLineFields(isTieLine);
+  document.getElementById("f-no").value      = r["ลำดับ"]                ?? "";
+  document.getElementById("f-name").value    = r["ชื่อสายส่ง"]          ?? "";
+  document.getElementById("f-dept").value    = r["แผนกสายส่ง"]          ?? "";
+  document.getElementById("f-bss").value     = r["บสส"]                  ?? "";
+  document.getElementById("f-circuit").value = r["วงจร"]                 ?? "";
+  document.getElementById("f-volt").value    = r["แรงดัน"]               ?? "115 kV";
+  document.getElementById("f-type").value    = r["ชนิดสาย"]              ?? "";
+  document.getElementById("f-mva").value     = r["พิกัดMVA"]             ?? "";
+  document.getElementById("f-dist").value    = r["ระยะทางกม"]            ?? "";
+  document.getElementById("f-pole").value    = r["เสาส่งต้น"]            ?? "";
+  document.getElementById("f-sfa").value     = r["สฟA"]                  ?? "";
+  document.getElementById("f-sfb").value     = r["สฟB"]                  ?? "";
+  document.getElementById("f-org").value     = r["อปกรับผิดชอบกม"]      ?? "";
+  document.getElementById("f-span").value    = r["ช่วงเสาส่ง"]           ?? "";
+  document.getElementById("f-zone").value    = r["ฝ่ายที่เชื่อมโยง"]     ?? "";
   document.getElementById("modal").classList.add("open");
 };
 
@@ -778,6 +821,12 @@ document.getElementById("modal-save").addEventListener("click", async () => {
     เสาส่งต้น:    parseFloat(document.getElementById("f-pole").value)||null,
     สฟA:          document.getElementById("f-sfa").value.trim(),
     สฟB:          document.getElementById("f-sfb").value.trim(),
+    ...(isTieLine ? {
+      อปกรับผิดชอบกม: parseFloat(document.getElementById("f-org").value)||null,
+      ช่วงเสาส่ง:    document.getElementById("f-span").value.trim(),
+      ฝ่ายที่เชื่อมโยง: document.getElementById("f-zone").value.trim(),
+      isTieLine: true,
+    } : {}),
   };
 
   try {
@@ -814,9 +863,11 @@ document.getElementById("modal-cancel").addEventListener("click", closeModal);
 function closeModal() {
   document.getElementById("modal").classList.remove("open");
   editDocId = null;
+  isTieLine = false;
+  setTieLineFields(false);
 }
 function clearForm() {
-  ["f-no","f-name","f-dept","f-bss","f-circuit","f-type","f-mva","f-dist","f-pole","f-sfa","f-sfb"]
+  ["f-no","f-name","f-dept","f-bss","f-circuit","f-type","f-mva","f-dist","f-pole","f-sfa","f-sfb","f-org","f-span","f-zone"]
     .forEach(id => document.getElementById(id).value = "");
   document.getElementById("f-volt").value = "115 kV";
 }
