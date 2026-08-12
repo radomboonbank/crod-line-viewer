@@ -803,26 +803,31 @@ function setTieLineFields(show) {
 // ── OPEN EDIT ─────────────────────────────────────────────
 window.openEdit = function(docId) {
   const r = allData.find(x => x._id === docId);
-  if (!r) return;
+  if (!r) {
+    toast("ไม่พบข้อมูลที่ต้องการแก้ไข", true);
+    return;
+  }
+
+  // Main table = collection crodtransmissionline เท่านั้น
+  // Tie Line มี modal/collection แยกต่างหาก จึงไม่อ้าง f-org/f-span/f-zone ที่ไม่มีใน modal นี้
   editDocId = docId;
-  isTieLine = !!(r["อปกรับผิดชอบกม"] || r["ช่วงเสาส่ง"] || r["ฝ่ายที่เชื่อมโยง"] || r["isTieLine"]);
-  document.getElementById("modal-title").textContent = isTieLine ? "🔗 แก้ไข สายส่ง Tie Line" : "✏️ แก้ไข สายส่ง อปก.";
-  setTieLineFields(isTieLine);
-  document.getElementById("f-no").value      = r["ลำดับ"]                ?? "";
-  document.getElementById("f-name").value    = r["ชื่อสายส่ง"]          ?? "";
-  document.getElementById("f-dept").value    = r["แผนกสายส่ง"]          ?? "";
-  document.getElementById("f-bss").value     = r["บสส"]                  ?? "";
-  document.getElementById("f-circuit").value = r["วงจร"]                 ?? "";
-  document.getElementById("f-volt").value    = r["แรงดัน"]               ?? "115 kV";
-  document.getElementById("f-type").value    = r["ชนิดสาย"]              ?? "";
-  document.getElementById("f-mva").value     = r["พิกัดMVA"]             ?? "";
-  document.getElementById("f-dist").value    = r["ระยะทางกม"]            ?? "";
-  document.getElementById("f-pole").value    = r["เสาส่งต้น"]            ?? "";
-  document.getElementById("f-sfa").value     = r["สฟA"]                  ?? "";
-  document.getElementById("f-sfb").value     = r["สฟB"]                  ?? "";
-  document.getElementById("f-org").value     = r["อปกรับผิดชอบกม"]      ?? "";
-  document.getElementById("f-span").value    = r["ช่วงเสาส่ง"]           ?? "";
-  document.getElementById("f-zone").value    = r["ฝ่ายที่เชื่อมโยง"]     ?? "";
+  isTieLine = false;
+  document.getElementById("modal-title").textContent = "✏️ แก้ไข สายส่ง อปก.";
+  setTieLineFields(false);
+
+  document.getElementById("f-no").value      = r["ลำดับ"]       ?? "";
+  document.getElementById("f-name").value    = r["ชื่อสายส่ง"] ?? "";
+  document.getElementById("f-dept").value    = r["แผนกสายส่ง"] ?? "";
+  document.getElementById("f-bss").value     = r["บสส"]         ?? "";
+  document.getElementById("f-circuit").value = r["วงจร"]        ?? "";
+  document.getElementById("f-volt").value    = r["แรงดัน"]      ?? "115 kV";
+  document.getElementById("f-type").value    = r["ชนิดสาย"]     ?? "";
+  document.getElementById("f-mva").value     = r["พิกัดMVA"]    ?? "";
+  document.getElementById("f-dist").value    = r["ระยะทางกม"]   ?? "";
+  document.getElementById("f-pole").value    = r["เสาส่งต้น"]   ?? "";
+  document.getElementById("f-sfa").value     = r["สฟA"]         ?? "";
+  document.getElementById("f-sfb").value     = r["สฟB"]         ?? "";
+
   document.getElementById("modal").classList.add("open");
 };
 
@@ -857,17 +862,33 @@ document.getElementById("modal-save").addEventListener("click", async () => {
   try {
     const wasEdit = !!editDocId;
     const docId = editDocId ?? String(no);
-    await setDoc(doc(db, COLLECTION, docId), firebaseData);
+
+    if (wasEdit) {
+      // updateDoc แก้เฉพาะ field ที่ระบุ และเก็บ field อื่นใน document เดิมไว้
+      await updateDoc(doc(db, COLLECTION, docId), firebaseData);
+    } else {
+      await setDoc(doc(db, COLLECTION, docId), firebaseData);
+    }
+
     // update local ด้วย normalized keys ที่ UI ใช้
     const localData = normalizeLineRecord(firebaseData);
     const idx = allData.findIndex(x => x._id === docId);
-    if (idx >= 0) allData[idx] = { _id: docId, ...localData };
+    if (idx >= 0) allData[idx] = { ...allData[idx], ...localData, _id: docId };
     else allData.push({ _id: docId, ...localData });
+
     closeModal();
+    populateFilters();
     render();
-    toast(wasEdit ? "แก้ไขสำเร็จ ✓" : "เพิ่มข้อมูลสำเร็จ ✓");
+    toast(wasEdit ? "แก้ไข Firebase สำเร็จ ✓" : "เพิ่มข้อมูล Firebase สำเร็จ ✓");
   } catch(e) {
-    toast("บันทึกไม่ได้: " + e.message, true);
+    console.error("Firestore save error:", e);
+    if (e?.code === "permission-denied") {
+      toast("Firebase ปฏิเสธการแก้ไข (permission-denied) — ตรวจ Firestore Rules", true);
+    } else if (e?.code === "not-found") {
+      toast("ไม่พบ document ใน Firebase: " + docId, true);
+    } else {
+      toast("บันทึก Firebase ไม่ได้: " + (e?.message || e), true);
+    }
   }
 });
 
@@ -894,8 +915,11 @@ function closeModal() {
   setTieLineFields(false);
 }
 function clearForm() {
-  ["f-no","f-name","f-dept","f-bss","f-circuit","f-type","f-mva","f-dist","f-pole","f-sfa","f-sfb","f-org","f-span","f-zone"]
-    .forEach(id => document.getElementById(id).value = "");
+  ["f-no","f-name","f-dept","f-bss","f-circuit","f-type","f-mva","f-dist","f-pole","f-sfa","f-sfb"]
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
   document.getElementById("f-volt").value = "115 kV";
 }
 
