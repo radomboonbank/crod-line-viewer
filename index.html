@@ -172,6 +172,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <div class="sub">crod-line-response / crodtransmissionline</div>
     </div>
     <div id="total-badge" class="badge" style="margin-left:auto">— records</div>
+    <div class="badge" style="color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.10)">v4 Edit Fix</div>
     <span id="role-badge" class="role-badge"></span>
     <button class="btn-logout" id="btn-logout">ออกจากระบบ</button>
     <button class="btn-tieline" id="btn-tieline" onclick="openTieLine()">🔗 Tie Line</button>
@@ -490,6 +491,10 @@ const firebaseConfig = {
 };
 // ▲▲▲ วาง firebaseConfig ของคุณที่นี่ ▲▲▲
 
+const APP_VERSION = "4.0-edit-fix";
+window.__CROD_VERSION__ = APP_VERSION;
+console.log("CROD Transmission Line", APP_VERSION);
+
 const COLLECTION = "crodtransmissionline";
 const CONTACT_COLLECTION = "ContactTransmissionTerm";
 const TIE_LINE_COLLECTION = "tie_line_crod";
@@ -662,7 +667,7 @@ function render() {
   }
   tbody.innerHTML = rows.map(r => `
     <tr>
-      <td class="td-name td-name-link td-name-${vnc(r['แรงดัน'])}" onclick="openCalc('${r._id}')">${r["ชื่อสายส่ง"]}</td>
+      <td class="td-name td-name-link td-name-${vnc(r['แรงดัน'])} js-open-calc" data-doc-id="${encodeURIComponent(r._id)}">${r["ชื่อสายส่ง"]}</td>
       <td class="td-mono" style="text-align:center">${r["วงจร"]}</td>
       <td><span class="volt-tag ${vc(r["แรงดัน"])}">${r["แรงดัน"]}</span></td>
       <td class="td-mono">${r["ชนิดสาย"]}</td>
@@ -670,8 +675,8 @@ function render() {
       <td class="td-mono">${r["ระยะทางกม"]!=null?r["ระยะทางกม"].toFixed(3):"—"}</td>
       <td class="td-mono">${r["เสาส่งต้น"]!=null?r["เสาส่งต้น"].toFixed(0):"—"}</td>
       ${isAdmin ? `<td>
-        <button class="btn-edit" onclick="event.stopPropagation();openEdit('${r._id}')">✏️ แก้ไข</button>
-        <button class="btn-del"  onclick="event.stopPropagation();delRow('${r._id}','${r["ชื่อสายส่ง"]}')">🗑</button>
+        <button type="button" class="btn-edit js-edit" data-doc-id="${encodeURIComponent(r._id)}">✏️ แก้ไข</button>
+        <button type="button" class="btn-del js-delete" data-doc-id="${encodeURIComponent(r._id)}" data-name="${encodeURIComponent(r["ชื่อสายส่ง"] ?? "")}">🗑</button>
       </td>` : ""}
     </tr>`).join("");
 }
@@ -801,35 +806,78 @@ function setTieLineFields(show) {
 }
 
 // ── OPEN EDIT ─────────────────────────────────────────────
-window.openEdit = function(docId) {
-  const r = allData.find(x => x._id === docId);
-  if (!r) {
-    toast("ไม่พบข้อมูลที่ต้องการแก้ไข", true);
+function openEdit(docId) {
+  try {
+    const id = String(docId);
+    const r = allData.find(x => String(x._id) === id);
+    if (!r) {
+      toast(`ไม่พบข้อมูล Document ID: ${id}`, true);
+      console.error("openEdit: record not found", id, allData);
+      return;
+    }
+
+    editDocId = id;
+    isTieLine = false;
+    document.getElementById("modal-title").textContent = "✏️ แก้ไข สายส่ง อปก.";
+    setTieLineFields(false);
+
+    const setVal = (elementId, value) => {
+      const el = document.getElementById(elementId);
+      if (!el) throw new Error(`ไม่พบ element #${elementId}`);
+      el.value = value ?? "";
+    };
+
+    setVal("f-no",      r["ลำดับ"]);
+    setVal("f-name",    r["ชื่อสายส่ง"]);
+    setVal("f-dept",    r["แผนกสายส่ง"]);
+    setVal("f-bss",     r["บสส"]);
+    setVal("f-circuit", r["วงจร"]);
+    setVal("f-volt",    r["แรงดัน"] ?? "115 kV");
+    setVal("f-type",    r["ชนิดสาย"]);
+    setVal("f-mva",     r["พิกัดMVA"]);
+    setVal("f-dist",    r["ระยะทางกม"]);
+    setVal("f-pole",    r["เสาส่งต้น"]);
+    setVal("f-sfa",     r["สฟA"]);
+    setVal("f-sfb",     r["สฟB"]);
+
+    const modal = document.getElementById("modal");
+    if (!modal) throw new Error("ไม่พบ #modal");
+    modal.classList.add("open");
+    console.log("CROD v4: edit modal opened", id);
+  } catch (err) {
+    console.error("CROD v4 openEdit error:", err);
+    toast("เปิดหน้าต่างแก้ไขไม่ได้: " + (err?.message || err), true);
+  }
+}
+window.openEdit = openEdit;
+
+// ใช้ Event Delegation แทน inline onclick เพื่อให้ปุ่มแก้ไขทำงานแน่นอน
+// แม้ tbody จะถูก render ใหม่จากการค้นหา/กรอง/เรียงข้อมูล
+document.getElementById("tbody").addEventListener("click", (e) => {
+  const editBtn = e.target.closest(".js-edit");
+  if (editBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    openEdit(decodeURIComponent(editBtn.dataset.docId || ""));
     return;
   }
 
-  // Main table = collection crodtransmissionline เท่านั้น
-  // Tie Line มี modal/collection แยกต่างหาก จึงไม่อ้าง f-org/f-span/f-zone ที่ไม่มีใน modal นี้
-  editDocId = docId;
-  isTieLine = false;
-  document.getElementById("modal-title").textContent = "✏️ แก้ไข สายส่ง อปก.";
-  setTieLineFields(false);
+  const delBtn = e.target.closest(".js-delete");
+  if (delBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = decodeURIComponent(delBtn.dataset.docId || "");
+    const name = decodeURIComponent(delBtn.dataset.name || "");
+    window.delRow(id, name);
+    return;
+  }
 
-  document.getElementById("f-no").value      = r["ลำดับ"]       ?? "";
-  document.getElementById("f-name").value    = r["ชื่อสายส่ง"] ?? "";
-  document.getElementById("f-dept").value    = r["แผนกสายส่ง"] ?? "";
-  document.getElementById("f-bss").value     = r["บสส"]         ?? "";
-  document.getElementById("f-circuit").value = r["วงจร"]        ?? "";
-  document.getElementById("f-volt").value    = r["แรงดัน"]      ?? "115 kV";
-  document.getElementById("f-type").value    = r["ชนิดสาย"]     ?? "";
-  document.getElementById("f-mva").value     = r["พิกัดMVA"]    ?? "";
-  document.getElementById("f-dist").value    = r["ระยะทางกม"]   ?? "";
-  document.getElementById("f-pole").value    = r["เสาส่งต้น"]   ?? "";
-  document.getElementById("f-sfa").value     = r["สฟA"]         ?? "";
-  document.getElementById("f-sfb").value     = r["สฟB"]         ?? "";
-
-  document.getElementById("modal").classList.add("open");
-};
+  const calcCell = e.target.closest(".js-open-calc");
+  if (calcCell) {
+    e.preventDefault();
+    window.openCalc(decodeURIComponent(calcCell.dataset.docId || ""));
+  }
+});
 
 // ── SAVE ──────────────────────────────────────────────────
 document.getElementById("modal-save").addEventListener("click", async () => {
