@@ -172,7 +172,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <div class="sub">crod-line-response / crodtransmissionline</div>
     </div>
     <div id="total-badge" class="badge" style="margin-left:auto">— records</div>
-    <div class="badge" style="color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.10)">v4 Edit Fix</div>
+    <div class="badge" style="color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.10)">v5 Save Fix</div>
     <span id="role-badge" class="role-badge"></span>
     <button class="btn-logout" id="btn-logout">ออกจากระบบ</button>
     <button class="btn-tieline" id="btn-tieline" onclick="openTieLine()">🔗 Tie Line</button>
@@ -476,7 +476,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs,
-         doc, setDoc, updateDoc, deleteDoc }
+         doc, setDoc, deleteDoc }
                            from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ▼▼▼ วาง firebaseConfig ของคุณที่นี่ ▼▼▼
@@ -912,8 +912,11 @@ document.getElementById("modal-save").addEventListener("click", async () => {
     const docId = editDocId ?? String(no);
 
     if (wasEdit) {
-      // updateDoc แก้เฉพาะ field ที่ระบุ และเก็บ field อื่นใน document เดิมไว้
-      await updateDoc(doc(db, COLLECTION, docId), firebaseData);
+      // ใช้ setDoc + merge:true แทน updateDoc
+      // เหตุผล: Firestore updateDoc ตีความ key เช่น "บสส." เป็น field path
+      // และจุดท้ายชื่อ field ทำให้เกิด Invalid field path
+      // setDoc(..., { merge:true }) เขียนชื่อ field ตาม object key และไม่ลบ field อื่นใน document
+      await setDoc(doc(db, COLLECTION, docId), firebaseData, { merge: true });
     } else {
       await setDoc(doc(db, COLLECTION, docId), firebaseData);
     }
