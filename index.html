@@ -172,7 +172,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <div class="sub">crod-line-response / crodtransmissionline</div>
     </div>
     <div id="total-badge" class="badge" style="margin-left:auto">— records</div>
-    <div class="badge" style="color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.10)">v5 Save Fix</div>
+    <div class="badge" style="color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.10)">v6 Distance Fix</div>
     <span id="role-badge" class="role-badge"></span>
     <button class="btn-logout" id="btn-logout">ออกจากระบบ</button>
     <button class="btn-tieline" id="btn-tieline" onclick="openTieLine()">🔗 Tie Line</button>
@@ -513,26 +513,66 @@ let currentRole = null, editDocId = null;
 const app = initializeApp(firebaseConfig);
 db = getFirestore(app);
 
-// ── Firestore field compatibility ─────────────────────────
+// ── Firestore field compatibility · v6 Distance Fix ────────
 // Firestore ที่ import จาก Excel ใช้ชื่อ field:
 // "บสส.", "พิกัด MVA", "ระยะทาง (กม.)", "เสาส่ง (ต้น)", "สฟ. A", "สฟ. B"
 // แต่ UI เดิมอ้างชื่อแบบย่อ จึง normalize ให้ UI อ่านได้ทั้งรูปแบบเดิมและรูปแบบ Excel
 function numOrNull(v) {
-  if (v === null || v === undefined || v === "") return null;
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") {
+    v = v.trim();
+    if (v === "") return null;
+    // รองรับตัวเลขที่อาจมี comma จากการ import เช่น "49,117"
+    v = v.replace(/,/g, "");
+  }
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// Firestore field names ที่มาจาก Excel/การ import อาจมีช่องว่างซ้ำ,
+// NBSP หรือ zero-width character โดยมองด้วยตาแล้วเหมือนกันทุกประการ
+// จึงทำ canonical key ก่อนเทียบชื่อ field เพื่อให้ "ระยะทาง (กม.)",
+// "ระยะทาง  (กม.)" และ "ระยะทางกม" ถูกอ่านเป็น field เดียวกัน
+function canonicalFieldKey(key) {
+  return String(key ?? "")
+    .normalize("NFKC")
+    .replace(/[\s\u00A0\u200B-\u200D\uFEFF]+/g, "")
+    .replace(/[.()（）:：]/g, "")
+    .toLowerCase();
+}
+
+function readField(raw, ...aliases) {
+  // 1) ลองชื่อ exact ก่อน
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(raw, alias)) {
+      const v = raw[alias];
+      if (v !== null && v !== undefined && !(typeof v === "string" && v.trim() === "")) {
+        return v;
+      }
+    }
+  }
+
+  // 2) ถ้าไม่พบ ให้เทียบชื่อ field แบบ canonical
+  const wanted = new Set(aliases.map(canonicalFieldKey));
+  for (const [key, value] of Object.entries(raw)) {
+    if (!wanted.has(canonicalFieldKey(key))) continue;
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    return value;
+  }
+  return null;
 }
 
 function normalizeLineRecord(raw = {}) {
   return {
     ...raw,
-    "บสส":             raw["บสส"]             ?? raw["บสส."]                    ?? "",
-    "พิกัดMVA":         numOrNull(raw["พิกัดMVA"] ?? raw["พิกัด MVA"]),
-    "ระยะทางกม":        numOrNull(raw["ระยะทางกม"] ?? raw["ระยะทาง (กม.)"]),
-    "เสาส่งต้น":        numOrNull(raw["เสาส่งต้น"] ?? raw["เสาส่ง (ต้น)"]),
-    "สฟA":              raw["สฟA"]              ?? raw["สฟ. A"]                   ?? "",
-    "สฟB":              raw["สฟB"]              ?? raw["สฟ. B"]                   ?? "",
-    "อปกรับผิดชอบกม":  numOrNull(raw["อปกรับผิดชอบกม"] ?? raw["อปก. รับผิดชอบ (กม.)"]),
+    "บสส":             readField(raw, "บสส", "บสส.") ?? "",
+    "พิกัดMVA":         numOrNull(readField(raw, "พิกัดMVA", "พิกัด MVA")),
+    "ระยะทางกม":        numOrNull(readField(raw, "ระยะทางกม", "ระยะทาง (กม.)", "ระยะทาง(กม.)")),
+    "เสาส่งต้น":        numOrNull(readField(raw, "เสาส่งต้น", "เสาส่ง (ต้น)", "เสาส่ง(ต้น)")),
+    "สฟA":              readField(raw, "สฟA", "สฟ. A") ?? "",
+    "สฟB":              readField(raw, "สฟB", "สฟ. B") ?? "",
+    "อปกรับผิดชอบกม":  numOrNull(readField(raw, "อปกรับผิดชอบกม", "อปก. รับผิดชอบ (กม.)", "อปก.รับผิดชอบ(กม.)")),
   };
 }
 
