@@ -508,6 +508,29 @@ let currentRole = null, editDocId = null;
 const app = initializeApp(firebaseConfig);
 db = getFirestore(app);
 
+// ── Firestore field compatibility ─────────────────────────
+// Firestore ที่ import จาก Excel ใช้ชื่อ field:
+// "บสส.", "พิกัด MVA", "ระยะทาง (กม.)", "เสาส่ง (ต้น)", "สฟ. A", "สฟ. B"
+// แต่ UI เดิมอ้างชื่อแบบย่อ จึง normalize ให้ UI อ่านได้ทั้งรูปแบบเดิมและรูปแบบ Excel
+function numOrNull(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeLineRecord(raw = {}) {
+  return {
+    ...raw,
+    "บสส":             raw["บสส"]             ?? raw["บสส."]                    ?? "",
+    "พิกัดMVA":         numOrNull(raw["พิกัดMVA"] ?? raw["พิกัด MVA"]),
+    "ระยะทางกม":        numOrNull(raw["ระยะทางกม"] ?? raw["ระยะทาง (กม.)"]),
+    "เสาส่งต้น":        numOrNull(raw["เสาส่งต้น"] ?? raw["เสาส่ง (ต้น)"]),
+    "สฟA":              raw["สฟA"]              ?? raw["สฟ. A"]                   ?? "",
+    "สฟB":              raw["สฟB"]              ?? raw["สฟ. B"]                   ?? "",
+    "อปกรับผิดชอบกม":  numOrNull(raw["อปกรับผิดชอบกม"] ?? raw["อปก. รับผิดชอบ (กม.)"]),
+  };
+}
+
 // ── Check session ─────────────────────────────────────────
 const savedRole = sessionStorage.getItem("crod_role");
 const savedUser = sessionStorage.getItem("crod_user");
@@ -562,7 +585,7 @@ async function loadData() {
       getDocs(collection(db, COLLECTION)),
       getDocs(collection(db, CONTACT_COLLECTION)),
     ]);
-    allData     = snapLine.docs.map(d => ({ _id: d.id, ...d.data() }));
+    allData     = snapLine.docs.map(d => ({ _id: d.id, ...normalizeLineRecord(d.data()) }));
     contactData = snapContact.docs.map(d => d.data());
     populateFilters();
     render();
@@ -575,9 +598,9 @@ async function loadData() {
 }
 
 function populateFilters() {
-  const depts   = [...new Set(allData.map(r=>r["แผนกสายส่ง"]))].sort();
-  const bssList = [...new Set(allData.map(r=>r["บสส"]))].sort();
-  const wires   = [...new Set(allData.map(r=>r["ชนิดสาย"]))].sort();
+  const depts   = [...new Set(allData.map(r=>r["แผนกสายส่ง"]).filter(Boolean))].sort();
+  const bssList = [...new Set(allData.map(r=>r["บสส"]).filter(Boolean))].sort();
+  const wires   = [...new Set(allData.map(r=>r["ชนิดสาย"]).filter(Boolean))].sort();
   depts.forEach(d => addOpt("filter-dept", d));
   bssList.forEach(b => addOpt("filter-bss", b));
   wires.forEach(w => addOpt("filter-wire", w));
@@ -808,37 +831,41 @@ document.getElementById("modal-save").addEventListener("click", async () => {
   const no = parseInt(document.getElementById("f-no").value);
   if (!no) { toast("กรุณากรอกลำดับ", true); return; }
 
-  const data = {
-    ลำดับ:        no,
-    ชื่อสายส่ง:   document.getElementById("f-name").value.trim(),
-    แผนกสายส่ง:   document.getElementById("f-dept").value.trim(),
-    บสส:          document.getElementById("f-bss").value.trim(),
-    วงจร:         parseInt(document.getElementById("f-circuit").value)||1,
-    แรงดัน:       document.getElementById("f-volt").value,
-    ชนิดสาย:      document.getElementById("f-type").value.trim(),
-    พิกัดMVA:     parseFloat(document.getElementById("f-mva").value)||null,
-    ระยะทางกม:    parseFloat(document.getElementById("f-dist").value)||null,
-    เสาส่งต้น:    parseFloat(document.getElementById("f-pole").value)||null,
-    สฟA:          document.getElementById("f-sfa").value.trim(),
-    สฟB:          document.getElementById("f-sfb").value.trim(),
+  // บันทึกกลับ Firestore ด้วยชื่อ field เดียวกับไฟล์ Excel/Firebase
+  // เพื่อไม่ให้ collection มี field 2 ชุดปะปนกัน
+  const firebaseData = {
+    "ลำดับ":          no,
+    "ชื่อสายส่ง":     document.getElementById("f-name").value.trim(),
+    "แผนกสายส่ง":     document.getElementById("f-dept").value.trim(),
+    "บสส.":           document.getElementById("f-bss").value.trim(),
+    "วงจร":           parseInt(document.getElementById("f-circuit").value)||1,
+    "แรงดัน":         document.getElementById("f-volt").value,
+    "ชนิดสาย":        document.getElementById("f-type").value.trim(),
+    "พิกัด MVA":      parseFloat(document.getElementById("f-mva").value)||null,
+    "ระยะทาง (กม.)":  parseFloat(document.getElementById("f-dist").value)||null,
+    "เสาส่ง (ต้น)":   parseFloat(document.getElementById("f-pole").value)||null,
+    "สฟ. A":          document.getElementById("f-sfa").value.trim(),
+    "สฟ. B":          document.getElementById("f-sfb").value.trim(),
     ...(isTieLine ? {
-      อปกรับผิดชอบกม: parseFloat(document.getElementById("f-org").value)||null,
-      ช่วงเสาส่ง:    document.getElementById("f-span").value.trim(),
-      ฝ่ายที่เชื่อมโยง: document.getElementById("f-zone").value.trim(),
-      isTieLine: true,
+      "อปก. รับผิดชอบ (กม.)": parseFloat(document.getElementById("f-org").value)||null,
+      "ช่วงเสาส่ง":            document.getElementById("f-span").value.trim(),
+      "ฝ่ายที่เชื่อมโยง":       document.getElementById("f-zone").value.trim(),
+      "isTieLine":              true,
     } : {}),
   };
 
   try {
+    const wasEdit = !!editDocId;
     const docId = editDocId ?? String(no);
-    await setDoc(doc(db, COLLECTION, docId), data);
-    // update local
+    await setDoc(doc(db, COLLECTION, docId), firebaseData);
+    // update local ด้วย normalized keys ที่ UI ใช้
+    const localData = normalizeLineRecord(firebaseData);
     const idx = allData.findIndex(x => x._id === docId);
-    if (idx >= 0) allData[idx] = { _id: docId, ...data };
-    else allData.push({ _id: docId, ...data });
+    if (idx >= 0) allData[idx] = { _id: docId, ...localData };
+    else allData.push({ _id: docId, ...localData });
     closeModal();
     render();
-    toast(editDocId ? "แก้ไขสำเร็จ ✓" : "เพิ่มข้อมูลสำเร็จ ✓");
+    toast(wasEdit ? "แก้ไขสำเร็จ ✓" : "เพิ่มข้อมูลสำเร็จ ✓");
   } catch(e) {
     toast("บันทึกไม่ได้: " + e.message, true);
   }
@@ -881,7 +908,7 @@ window.openTieLine = async function() {
   if (tieLineLoaded) { renderTieLine(); return; }
   try {
     const snap = await getDocs(collection(db, TIE_LINE_COLLECTION));
-    tieLineData = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    tieLineData = snap.docs.map(d => ({ _id: d.id, ...normalizeLineRecord(d.data()) }));
     tieLineLoaded = true;
     // populate dept filter
     const depts = [...new Set(tieLineData.map(r => r["ฝ่ายที่เชื่อมโยง"]))].sort();
@@ -1047,34 +1074,36 @@ document.getElementById("tl-modal-cancel").addEventListener("click", () => {
 document.getElementById("tl-modal-save").addEventListener("click", async () => {
   const no = parseInt(document.getElementById("tl-f-no").value);
   if (!no) { toast("กรุณากรอกลำดับ", true); return; }
-  const data = {
-    ลำดับ:            no,
-    ชื่อสายส่ง:       document.getElementById("tl-f-name").value.trim(),
-    แผนกสายส่ง:       document.getElementById("tl-f-dept").value.trim(),
-    บสส:              document.getElementById("tl-f-bss").value.trim(),
-    วงจร:             parseInt(document.getElementById("tl-f-circuit").value)||1,
-    แรงดัน:           document.getElementById("tl-f-volt").value,
-    ชนิดสาย:          document.getElementById("tl-f-type").value.trim(),
-    พิกัดMVA:         parseFloat(document.getElementById("tl-f-mva").value)||null,
-    ระยะทางกม:        parseFloat(document.getElementById("tl-f-dist").value)||null,
-    อปกรับผิดชอบกม:   parseFloat(document.getElementById("tl-f-org").value)||null,
-    เสาส่งต้น:        parseFloat(document.getElementById("tl-f-pole").value)||null,
-    สฟA:              document.getElementById("tl-f-sfa").value.trim(),
-    สฟB:              document.getElementById("tl-f-sfb").value.trim(),
-    ช่วงเสาส่ง:       document.getElementById("tl-f-span").value.trim(),
-    ฝ่ายที่เชื่อมโยง: document.getElementById("tl-f-zone").value.trim(),
-    isTieLine:        true,
+  const firebaseData = {
+    "ลำดับ":                  no,
+    "ชื่อสายส่ง":             document.getElementById("tl-f-name").value.trim(),
+    "แผนกสายส่ง":             document.getElementById("tl-f-dept").value.trim(),
+    "บสส.":                   document.getElementById("tl-f-bss").value.trim(),
+    "วงจร":                   parseInt(document.getElementById("tl-f-circuit").value)||1,
+    "แรงดัน":                 document.getElementById("tl-f-volt").value,
+    "ชนิดสาย":                document.getElementById("tl-f-type").value.trim(),
+    "พิกัด MVA":              parseFloat(document.getElementById("tl-f-mva").value)||null,
+    "ระยะทาง (กม.)":          parseFloat(document.getElementById("tl-f-dist").value)||null,
+    "อปก. รับผิดชอบ (กม.)":  parseFloat(document.getElementById("tl-f-org").value)||null,
+    "เสาส่ง (ต้น)":           parseFloat(document.getElementById("tl-f-pole").value)||null,
+    "สฟ. A":                  document.getElementById("tl-f-sfa").value.trim(),
+    "สฟ. B":                  document.getElementById("tl-f-sfb").value.trim(),
+    "ช่วงเสาส่ง":             document.getElementById("tl-f-span").value.trim(),
+    "ฝ่ายที่เชื่อมโยง":        document.getElementById("tl-f-zone").value.trim(),
+    "isTieLine":               true,
   };
   try {
+    const wasEdit = !!tlEditDocId;
     const docId = tlEditDocId ?? String(no);
-    await setDoc(doc(db, TIE_LINE_COLLECTION, docId), data);
+    await setDoc(doc(db, TIE_LINE_COLLECTION, docId), firebaseData);
+    const localData = normalizeLineRecord(firebaseData);
     const idx = tieLineData.findIndex(x => x._id === docId);
-    if (idx >= 0) tieLineData[idx] = { _id: docId, ...data };
-    else tieLineData.push({ _id: docId, ...data });
+    if (idx >= 0) tieLineData[idx] = { _id: docId, ...localData };
+    else tieLineData.push({ _id: docId, ...localData });
     document.getElementById("tl-modal").classList.remove("open");
     tlEditDocId = null;
     renderTieLine();
-    toast(tlEditDocId ? "แก้ไขสำเร็จ ✓" : "เพิ่มข้อมูลสำเร็จ ✓");
+    toast(wasEdit ? "แก้ไขสำเร็จ ✓" : "เพิ่มข้อมูลสำเร็จ ✓");
   } catch(e) {
     toast("บันทึกไม่ได้: " + e.message, true);
   }
