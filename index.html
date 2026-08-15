@@ -173,7 +173,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <div class="sub">crod-line-response / crodtransmissionline</div>
     </div>
     <div id="total-badge" class="badge" style="margin-left:auto">— records</div>
-    <div class="badge" style="color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.10)">v10 Firestore User DB</div>
+    <div class="badge" style="color:var(--green);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.10)">v12 Tie Line Exact Columns</div>
     <span id="role-badge" class="role-badge"></span>
     <button class="btn-logout" id="btn-logout">ออกจากระบบ</button>
     <button class="btn-tieline" id="btn-tieline" onclick="openTieLine()">🔗 Tie Line</button>
@@ -343,6 +343,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
     <div style="width:34px;height:34px;background:linear-gradient(135deg,var(--green),#2ea043);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🔗</div>
     <div>
       <div style="font-size:15px;font-weight:600;">CROD Tie Line Database</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;">v12 · แสดง 6 ฟิลด์: ชื่อสายส่ง · วงจร · แรงดัน · พิกัด MVA · ระยะทาง (กม) · อปก. (กม.)</div>
       <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">crod-line-response / tie_line_crod</div>
     </div>
     <div id="tl-badge" style="margin-left:auto;background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3);border-radius:20px;padding:4px 12px;font-size:12px;font-family:'IBM Plex Mono',monospace;">— records</div>
@@ -355,14 +356,11 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
-      <input type="text" id="tl-search" placeholder="ค้นหาชื่อสายส่ง, สฟ., ฝ่าย..." style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px 8px 34px;font-size:13px;font-family:inherit;outline:none;">
+      <input type="text" id="tl-search" placeholder="ค้นหาชื่อสายส่ง..." style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px 8px 34px;font-size:13px;font-family:inherit;outline:none;">
     </div>
     <select id="tl-filter-volt" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;min-width:140px;">
       <option value="">แรงดัน ทั้งหมด</option>
       <option>500 kV</option><option>230 kV</option><option>115 kV</option><option>69 kV</option>
-    </select>
-    <select id="tl-filter-dept" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;min-width:160px;">
-      <option value="">ฝ่ายที่เชื่อมโยง ทั้งหมด</option>
     </select>
   </div>
 
@@ -378,12 +376,9 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;">ชื่อสายส่ง</th>
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">วงจร</th>
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">แรงดัน</th>
-          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ชนิดสาย</th>
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">พิกัด MVA</th>
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ระยะทาง (กม)</th>
           <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">อปก. (กม.)</th>
-          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ช่วงเสาส่ง</th>
-          <th style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);">ฝ่ายที่เชื่อมโยง</th>
           <th id="tl-th-action" style="background:var(--surface);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);display:none;">จัดการ</th>
         </tr>
       </thead>
@@ -456,7 +451,7 @@ footer{text-align:center;padding:18px;color:var(--muted);font-size:11px;border-t
       <div class="full"><label>ชนิดสาย</label><input type="text" id="tl-f-type"></div>
       <div><label>พิกัด MVA</label><input type="number" step="0.01" id="tl-f-mva"></div>
       <div><label>ระยะทาง (กม)</label><input type="number" step="0.001" id="tl-f-dist"></div>
-      <div><label>อปก. รับผิดชอบ (กม.)</label><input type="number" step="0.001" id="tl-f-org"></div>
+      <div><label>อปก. (กม.)</label><input type="number" step="0.001" id="tl-f-org"></div>
       <div><label>เสาส่ง (ต้น)</label><input type="number" id="tl-f-pole"></div>
       <div><label>ลำดับ</label><input type="number" id="tl-f-no"></div>
       <div><label>สฟ A</label><input type="text" id="tl-f-sfa"></div>
@@ -497,7 +492,7 @@ const firebaseConfig = {
 };
 // ▲▲▲ วาง firebaseConfig ของคุณที่นี่ ▲▲▲
 
-const APP_VERSION = "10.0-firestore-web-user-password";
+const APP_VERSION = "12.0-tie-line-exact-columns";
 window.__CROD_VERSION__ = APP_VERSION;
 console.log("CROD Transmission Line", APP_VERSION);
 
@@ -514,7 +509,7 @@ let currentRole = null, editDocId = null;
 const app = initializeApp(firebaseConfig);
 db = getFirestore(app);
 
-// ── Firestore field compatibility · v10 Firestore User DB ─────
+// ── Firestore field compatibility · v12 Tie Line Exact Columns ─────
 // ชื่อ field มาตรฐานต้องตรงกับหัวตาราง Excel ทุกตัว:
 // ลำดับ | แผนกสายส่ง | บสส | ชื่อสายส่ง | วงจร | ชนิดสาย |
 // พิกัด MVA | ระยะทาง (กม) | เสาส่ง (ต้น) | สฟ A | สฟ B | แรงดัน
@@ -575,7 +570,7 @@ function normalizeLineRecord(raw = {}) {
     "สฟ A":            readField(raw, "สฟ A", "สฟ. A", "สฟA") ?? "",
     "สฟ B":            readField(raw, "สฟ B", "สฟ. B", "สฟB") ?? "",
     "แรงดัน":          readField(raw, "แรงดัน") ?? "",
-    "อปกรับผิดชอบกม":  numOrNull(readField(raw, "อปกรับผิดชอบกม", "อปก. รับผิดชอบ (กม.)", "อปก.รับผิดชอบ(กม.)")),
+    "อปกรับผิดชอบกม":  numOrNull(readField(raw, "อปกรับผิดชอบกม", "อปก", "อปก.", "อปก:", "อปก. (กม.)", "อปก (กม.)", "อปก.(กม.)", "อปก. (กม.)", "อปก.รับผิดชอบ(กม.)")),
   };
 }
 
@@ -1026,7 +1021,7 @@ document.getElementById("modal-save").addEventListener("click", async () => {
     "สฟ B":            document.getElementById("f-sfb").value.trim(),
     "แรงดัน":          document.getElementById("f-volt").value,
     ...(isTieLine ? {
-      "อปก. รับผิดชอบ (กม.)": parseFloat(document.getElementById("f-org").value)||null,
+      "อปก. (กม.)": parseFloat(document.getElementById("f-org").value)||null,
       "ช่วงเสาส่ง":            document.getElementById("f-span").value.trim(),
       "ฝ่ายที่เชื่อมโยง":       document.getElementById("f-zone").value.trim(),
       "isTieLine":              true,
@@ -1110,13 +1105,6 @@ window.openTieLine = async function() {
     const snap = await getDocs(collection(db, TIE_LINE_COLLECTION));
     tieLineData = snap.docs.map(d => ({ _id: d.id, ...normalizeLineRecord(d.data()) }));
     tieLineLoaded = true;
-    // populate dept filter
-    const depts = [...new Set(tieLineData.map(r => r["ฝ่ายที่เชื่อมโยง"]))].sort();
-    depts.forEach(d => {
-      const o = document.createElement("option");
-      o.value = o.textContent = d;
-      document.getElementById("tl-filter-dept").appendChild(o);
-    });
     renderTieLine();
     document.getElementById("tl-state").style.display = "none";
     document.getElementById("tl-table").style.display = "table";
@@ -1133,13 +1121,11 @@ window.closeTieLine = function() {
 function renderTieLine() {
   const q    = document.getElementById("tl-search").value.toLowerCase();
   const volt = document.getElementById("tl-filter-volt").value;
-  const dept = document.getElementById("tl-filter-dept").value;
 
   let rows = tieLineData.filter(r => {
     if (volt && r["แรงดัน"] !== volt) return false;
-    if (dept && r["ฝ่ายที่เชื่อมโยง"] !== dept) return false;
     if (q) {
-      const hay = [r["ชื่อสายส่ง"], r["สฟ A"], r["สฟ B"], r["ฝ่ายที่เชื่อมโยง"], r["ช่วงเสาส่ง"]].join(" ").toLowerCase();
+      const hay = [r["ชื่อสายส่ง"]].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -1149,29 +1135,26 @@ function renderTieLine() {
   const isAdmin = currentRole === "admin";
   const tbody = document.getElementById("tl-tbody");
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">ไม่พบข้อมูลที่ตรงกัน</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">ไม่พบข้อมูลที่ตรงกัน</td></tr>`;
     return;
   }
   const nameColor = r => vnc(r['แรงดัน'])==='v500'?'var(--purple)':vnc(r['แรงดัน'])==='v230'?'var(--accent)':vnc(r['แรงดัน'])==='v115'?'var(--accent2)':'var(--green)';
   tbody.innerHTML = rows.map(r => `
     <tr style="border-bottom:1px solid var(--border);">
       <td style="padding:9px 10px;color:${nameColor(r)};font-weight:500;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;" onclick="openTlCalc('${r._id}')">${r["ชื่อสายส่ง"]}</td>
-      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:center;">${r["วงจร"]}</td>
-      <td style="padding:9px 10px;"><span class="volt-tag ${vc(r['แรงดัน'])}">${r["แรงดัน"]}</span></td>
-      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["ชนิดสาย"]}</td>
+      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:center;">${r["วงจร"] ?? "—"}</td>
+      <td style="padding:9px 10px;"><span class="volt-tag ${vc(r['แรงดัน'])}">${r["แรงดัน"] || "—"}</span></td>
       <td style="padding:9px 10px;color:var(--yellow);font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["พิกัด MVA"]!=null?r["พิกัด MVA"].toFixed(2):"—"}</td>
       <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["ระยะทาง (กม)"]!=null?r["ระยะทาง (กม)"].toFixed(3):"—"}</td>
-      <td style="padding:9px 10px;font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["อปกรับผิดชอบกม"]!=null?r["อปกรับผิดชอบกม"].toFixed(3):"—"}</td>
-      <td style="padding:9px 10px;font-size:12px;">${r["ช่วงเสาส่ง"]??""}</td>
-      <td style="padding:9px 10px;font-size:12px;color:var(--muted);">${r["ฝ่ายที่เชื่อมโยง"]??""}</td>
+      <td style="padding:9px 10px;color:var(--accent2);font-family:'IBM Plex Mono',monospace;font-size:12px;">${r["อปกรับผิดชอบกม"]!=null?r["อปกรับผิดชอบกม"].toFixed(3):"—"}</td>
       ${isAdmin ? `<td style="padding:9px 10px;">
         <button class="btn-edit" onclick="event.stopPropagation();openTlEdit('${r._id}')">✏️ แก้ไข</button>
-        <button class="btn-del"  onclick="event.stopPropagation();delTlRow('${r._id}','${r["ชื่อสายส่ง"]}')">🗑</button>
+        <button class="btn-del" onclick="event.stopPropagation();delTlRow('${r._id}','${r["ชื่อสายส่ง"]}')">🗑</button>
       </td>` : ""}
     </tr>`).join("");
 }
 
-["tl-search","tl-filter-volt","tl-filter-dept"].forEach(id =>
+["tl-search","tl-filter-volt"].forEach(id =>
   document.getElementById(id)?.addEventListener("input", renderTieLine)
 );
 
@@ -1285,7 +1268,7 @@ document.getElementById("tl-modal-save").addEventListener("click", async () => {
     "ชนิดสาย":                document.getElementById("tl-f-type").value.trim(),
     "พิกัด MVA":              parseFloat(document.getElementById("tl-f-mva").value)||null,
     "ระยะทาง (กม)":          parseFloat(document.getElementById("tl-f-dist").value)||null,
-    "อปก. รับผิดชอบ (กม.)":  parseFloat(document.getElementById("tl-f-org").value)||null,
+    "อปก. (กม.)":  parseFloat(document.getElementById("tl-f-org").value)||null,
     "เสาส่ง (ต้น)":           parseFloat(document.getElementById("tl-f-pole").value)||null,
     "สฟ A":                  document.getElementById("tl-f-sfa").value.trim(),
     "สฟ B":                  document.getElementById("tl-f-sfb").value.trim(),
